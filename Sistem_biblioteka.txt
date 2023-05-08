@@ -1,0 +1,187 @@
+CREATE DATABASE Sistem_biblioteka
+
+CREATE TABLE Biblioteke(
+    BibliotekaID INT PRIMARY KEY AUTO_INCREMENT,
+    nazivBiblioteke VARCHAR(45) NOT NULL,
+    Grad VARCHAR(45) NOT NULL,
+    Adresa VARCHAR(45) NOT NULL,
+    adresaBroj VARCHAR(45) NOT NULL,
+    telefon VARCHAR(45) NOT NULL
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS Clanovi(
+    ClanID INT PRIMARY KEY AUTO_INCREMENT,
+    Ime VARCHAR(45) NOT NULL,
+    Prezime VARCHAR(45) NOT NULL,
+    DatumRodjenja DATE NOT NULL,
+    ClanskaKarta VARCHAR(45) NOT NULL, 
+    Telefon VARCHAR(45),
+    Grad VARCHAR(45) NOT NULL,
+    Adresa VARCHAR(45) NOT NULL,
+    adresaBroj VARCHAR(45) NOT NULL,
+    BibliotekaID INT,
+    FOREIGN KEY(BibliotekaID) REFERENCES biblioteke(BibliotekaID) ON UPDATE CASCADE ON DELETE NO ACTION
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS Bibliotekari(
+    BibliotekarID INT PRIMARY KEY AUTO_INCREMENT,
+    Ime VARCHAR(45) NOT NULL,
+    Prezime VARCHAR(45) NOT NULL,
+    JMBG VARCHAR(45) NOT NULL,
+    SifraZaposlenog VARCHAR(45) NOT NULL,
+    Telefon VARCHAR(45),
+    Grad VARCHAR(45) NOT NULL,
+    Adresa VARCHAR(45) NOT NULL,
+    adresaBroj VARCHAR(45) NOT NULL,
+    BibliotekaID INT,
+    FOREIGN KEY(BibliotekaID) REFERENCES biblioteke(BibliotekaID) ON UPDATE CASCADE ON DELETE NO ACTION
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS DecijeOdeljenje(
+    DecijeOdeljenjeID INT PRIMARY KEY AUTO_INCREMENT,
+    Uzrast VARCHAR(45) NOT NULL
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS NaucnoOdeljenje(
+    NaucnoOdeljenjeID INT PRIMARY KEY AUTO_INCREMENT,
+    NaucnaOblast VARCHAR(45) NOT NULL
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS Knjige(
+    KnjigaID INT PRIMARY KEY AUTO_INCREMENT,
+    ISBN VARCHAR(22) NOT NULL,
+    Naziv VARCHAR(45) NOT NULL,
+    jezickaGrupa VARCHAR(45) NOT NULL,
+    DecijeOdeljenjeID INT,
+    NaucnoOdeljenjeID INT,
+    FOREIGN KEY(DecijeOdeljenjeID) REFERENCES DecijeOdeljenje(DecijeOdeljenjeID) ON UPDATE CASCADE ON DELETE NO ACTION,
+    FOREIGN KEY(NaucnoOdeljenjeID) REFERENCES NaucnoOdeljenje(NaucnoOdeljenjeID) ON UPDATE CASCADE ON DELETE NO ACTION
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS Autori(
+    AutorID INT PRIMARY KEY AUTO_INCREMENT,
+    Ime VARCHAR(45) NOT NULL,
+    Prezime VARCHAR(45) NOT NULL
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS Izdavaci(
+    IzdavacID INT PRIMARY KEY AUTO_INCREMENT,
+    NazivIzdavaca VARCHAR(45) NOT NULL,
+    KnjigaID INT,
+    AutorID INT,
+    FOREIGN KEY(KnjigaID) REFERENCES Knjige(KnjigaID) ON UPDATE CASCADE ON DELETE NO ACTION,
+    FOREIGN KEY(AutorID) REFERENCES Autori(AutorID) ON UPDATE CASCADE ON DELETE NO ACTION
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS BibliotekeKnjige(
+    BibliotekaKnjigaID INT PRIMARY KEY AUTO_INCREMENT,
+    KnjigaID INT,
+    BibliotekaID INT,
+    FOREIGN KEY(KnjigaID) REFERENCES Knjige(KnjigaID) ON UPDATE CASCADE ON DELETE NO ACTION,
+    FOREIGN KEY(BibliotekaID) REFERENCES biblioteke(BibliotekaID) ON UPDATE CASCADE ON DELETE NO ACTION
+) ENGINE = INNODB;
+
+CREATE TABLE IF NOT EXISTS Izdavanje(
+    IzdavanjeID INT PRIMARY KEY AUTO_INCREMENT,
+    datumIzdavanja DATE NOT NULL,
+    datumVracanja DATE,
+    KnjigaID INT NOT NULL,
+    BibliotekarID INT NOT NULL,
+    ClanID INT NOT NULL,
+    FOREIGN KEY(KnjigaID) REFERENCES Knjige(KnjigaID) ON UPDATE CASCADE ON DELETE NO ACTION,
+    FOREIGN KEY(BibliotekarID) REFERENCES bibliotekari(BibliotekarID) ON UPDATE CASCADE ON DELETE NO ACTION,
+    FOREIGN KEY(ClanID) REFERENCES Clanovi(ClanID) ON UPDATE CASCADE ON DELETE NO ACTION
+) ENGINE = INNODB;
+
+
+CREATE TABLE IF NOT EXISTS PozajmnoOdeljenje(
+    PozajmnoOdeljenjeID INT PRIMARY KEY AUTO_INCREMENT,
+    KnjigaID INT,
+    Aktuelnost VARCHAR(45) NOT NULL,
+    Žanr VARCHAR(45) NOT NULL
+) ENGINE = INNODB;
+--------------------------------------------------------------------------------------------------------
+DELIMITER
+    //
+CREATE TRIGGER pozajmljeno_TRIGGER AFTER INSERT ON
+    izdavanje FOR EACH ROW
+BEGIN
+    
+IF(
+    SELECT
+        knjige.decijeOdeljenjeID
+    FROM
+        knjige
+    INNER JOIN izdavanje USING(knjigaID)
+where knjige.knjigaID = new.knjigaID
+) IS NOT NULL THEN
+INSERT INTO pozajmnoOdeljenje(knjigaID,žanr)
+VALUES(NEW.KnjigaID, "decija knjiga") ; ELSE
+INSERT INTO pozajmnoOdeljenje(knjigaID,žanr)
+VALUES(NEW.KnjigaID,"naucna knjiga") ;
+END IF ;
+END //
+DELIMITER
+    ;
+
+----------------------------------------------------------------------------------------------------------------------------
+INSERT INTO `biblioteke`( `nazivBiblioteke`, `Grad`, `Adresa`, `adresaBroj`, `telefon`)
+VALUES 
+("Univerzitetska biblioteka Svetozar Marković", "Beograd", "Bul. kralja Aleksandra", "71", "011/337-0513"),
+("Petar Kočić", "Beograd", "Viška", "3", "011/2430-250"),
+("Sveti Sava", "Beograd", "Petra Zrinjskog", "8", "011/2618-146");
+
+INSERT INTO `decijeodeljenje`(`Uzrast`) VALUES ("0-3"), ("3-5"), ("5-7"), ("7-9"), ("9-12");
+
+INSERT INTO `naucnoodeljenje`(`NaucnaOblast`)
+VALUES("Arheologija"),("Ekonomija"),("Filozofija"),("Istorija"),("Istorija umetnosti"),
+("Medicina"),("Pravo"),("Psihologija"),("Religija i teologija"),("Računari i tehnologija"),("Filologija i lingvistika");
+
+INSERT INTO `knjige`(`ISBN`, `Naziv`, `jezickaGrupa`, `DecijeOdeljenjeID`)
+VALUES("ISBN 978-86-521-4636-9", "Legende o zmajevima", "srpski", "4"),
+("ISBN 978-86-521-4756-4", "Uspavanka za miša","srpski", "1")
+INSERT INTO `knjige`(`ISBN`, `Naziv`, `jezickaGrupa`, `NaucnoOdeljenjeID`)
+VALUES("ISBN 978-86-521-3163-1", "Istorija srednjovekovnog sveta – I tom", "srpski", "4"),
+("ISBN 978-86-7436-621-9", "Jungova mapa duše","srpski", "8");
+
+INSERT INTO `bibliotekari`(`Ime`, `Prezime`, `JMBG`, `SifraZaposlenog`, `Telefon`, `Grad`, `Adresa`, `adresaBroj`, `BibliotekaID`) VALUES 
+("Pera", "Perić", "0803981715503", "PP983-71", "063/75-93-022", "Beograd", "ulica1","1", 1),
+("Nikola", "Nikolić", "0703982715503", "NN983-72", "063/75-93-026", "Beograd", "ulica1", "2", 1),
+("Sava", "Savetić", "0603983715503", "983-712", "063/75-93-023", "Beograd", "ulica2", "1", 2),
+("Laza", "Lazić", "0503984715503", "183-714", "063/75-93-032", "Beograd", "ulica2", "2", 2),
+("Milka", "Mikić", "0403979715503", "MM9837", "063/75-93-322", "Beograd", "ulica3", "1", 3),
+("Sara", "Sarić", "0303980715503", "SS9838", "063/75-93-392", "Beograd", "ulica3", "2", 3);
+
+INSERT INTO `clanovi`(`Ime`, `Prezime`, `DatumRodjenja`, `ClanskaKarta`, `Telefon`, `Grad`, `Adresa`, `adresaBroj`, `BibliotekaID`) VALUES 
+("Ana", "Anić", '1995-01-01', "AR396574", "063/79-93-392", "Beograd", "ulica", "3b", 1),
+("Lana", "Lanić", '1993-12-01', "396-574", "063/79-93-492", "Beograd", "ulicaa", "1", 2),
+("Ena", "Nakić", '1990-06-01', "SS0893-06", "063/79-93-592", "Beograd", "ulicaaa", "2", 3);
+
+INSERT INTO `autori`( `Ime`, `Prezime`) VALUES 
+("Jeica", "Greganović"),
+("Suzan", "Vajs Bauer"),
+("Marej", "Stajn"),
+("Tea", "Orsi");
+
+INSERT INTO `izdavaci`( `NazivIzdavaca`, `KnjigaID`, `AutorID`) VALUES 
+("izdavač1", 1, 4), ("izdavač2", 2, 1),("izdavač3", 3, 2),("izdavač1", 4, 3);
+
+INSERT INTO `bibliotekeknjige`(`KnjigaID`, `BibliotekaID`) VALUES 
+(1, 1), (1, 3), 
+(2, 2), 
+(3, 1), (3, 2),(3, 3), 
+(4, 2);
+
+INSERT INTO `izdavanje`(`datumIzdavanja`, `KnjigaID`, `BibliotekarID`, `ClanID`) VALUES 
+('2023-05-05', 1, 1, 1 ),
+('2023-05-05', 4, 3, 3 );
+
+
+
+
+
+
+
+
+
+
